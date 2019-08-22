@@ -27,9 +27,9 @@ class Classify(db.Model):
         json = {
             "id": self.id,
             "windcode": self.windcode,
-            "fund_setupdate": self.fund_setupdate,
+            "fund_setupdate": self.fund_setupdate.strftime("%Y-%m-%d"),
             "branch": self.branch,
             "classify": self.classify,
-            "update_date": self.update_date
+            "update_date": self.update_date.strftime("%Y-%m-%d")
         }
         return json
