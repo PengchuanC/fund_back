@@ -36,3 +36,11 @@ class BasicInfo(db.Model):
 
     def __repr__(self):
         return f"<BasicInfo {self.sec_name}>"
+
+    def to_dict(self):
+        items = self.__dict__
+        json = {}
+        for k, v in items.items():
+            if k != "_sa_instance_state":
+                json[k] = v
+        return json

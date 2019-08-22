@@ -24,12 +24,10 @@ class Classify(db.Model):
         return f"<Classify {self.windcode}>"
 
     def to_dict(self):
-        json = {
-            "id": self.id,
-            "windcode": self.windcode,
-            "fund_setupdate": self.fund_setupdate.strftime("%Y-%m-%d"),
-            "branch": self.branch,
-            "classify": self.classify,
-            "update_date": self.update_date.strftime("%Y-%m-%d")
-        }
+        items = self.__dict__
+        json = {}
+        for k, v in items.items():
+            if k != "_sa_instance_state":
+                json[k] = v
         return json
+
