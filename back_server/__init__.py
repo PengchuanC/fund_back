@@ -2,6 +2,7 @@ import warnings
 
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+from flask_cors import CORS
 
 from back_server.config import config
 
@@ -12,6 +13,7 @@ db = SQLAlchemy()
 
 def create_app(config_name):
     app = Flask(__name__)
+    CORS(app, supports_credentials=True)
     app.config.from_object(config[config_name])
     config[config_name].init_app(app)
 

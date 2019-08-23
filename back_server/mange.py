@@ -2,7 +2,7 @@ import os
 from flask_script import Manager, Shell
 from flask_migrate import Migrate, MigrateCommand
 
-from . import create_app, db
+from back_server import create_app, db
 
 
 app = create_app(os.getenv("FLASK_CONFIG") or "default")
