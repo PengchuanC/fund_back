@@ -13,30 +13,37 @@ def index():
     return "HOME_PAGE"
 
 
-@main.route("/summary", methods=["GET"])
-def summary():
+@main.route("/summary/<int:page>", methods=["GET"])
+def summary(page):
     """返回基金完整分类"""
-    c = Classify.query.filter_by(update_date=util.lastday_of_lastmonth()).all()
-    c = [x.to_dict() for x in c]
+    c = Classify.query.filter_by(update_date=util.lastday_of_lastmonth()).paginate(page, 25, False)
+    db.session.close()
+    page, total, items = util.zip_paginate(c)
+    c = [x.to_dict() for x in items]
     date = c[0]['update_date']
-    return make_response(jsonify({"date": date, "data": c}), 200)
+    return make_response(jsonify({"date": date, "data": c, 'page': page, "total": total}), 200)
 
 
-@main.route("/summary/info")
-def summary_info():
+@main.route("/summary/info/<int:page>")
+def summary_info(page):
     ret = db.session.query(
         Classify.classify, Classify.branch, BasicInfo.windcode, BasicInfo.sec_name, BasicInfo.fund_setupdate
-    ).join(BasicInfo, and_(Classify.windcode == BasicInfo.windcode, BasicInfo.type == "CSI")).all()
+    ).join(BasicInfo, and_(Classify.windcode == BasicInfo.windcode, BasicInfo.type == "CSI")).paginate(page, 25)
+    page, total, items = util.zip_paginate(ret)
     ret = [{
         "classify": x.classify, "branch": x.branch, "windcode": x.windcode, "sec_name": x.sec_name,
         "setupdate": x.fund_setupdate
-    } for x in ret]
-    return make_response(jsonify({"data": ret}), 200)
+    } for x in items]
+    return make_response(jsonify({"data": ret, "page": page, "total": total}), 200)
 
 
-@main.route("/test", methods=["GET", "POST"])
-def test():
-    c = BasicInfo.query.filter_by(type="CSI").first()
+@main.route("/test<int:page>", methods=["GET", "POST"])
+def test(page):
+    c = BasicInfo.query.filter_by(type="CSI").paginate(page, 20, False)
+    db.session.close()
     print(c.__dict__)
-    print(c.to_dict())
-    return c.windcode
+    total = c.total
+    page = c.page
+    items = c.items
+    items = [i.to_dict() for i in items]
+    return make_response(jsonify({"data": items, "page": page, "total": total}), 200)

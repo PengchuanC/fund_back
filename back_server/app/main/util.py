@@ -16,3 +16,10 @@ def lastday_of_lastmonth():
         return datetime.date(today_year, today_month-1, dates[-1])
     else:
         return datetime.date(today_year-1, 12, 31)
+
+
+def zip_paginate(p):
+    items = p.items
+    total = p.total
+    page = p.page
+    return page, total, items
