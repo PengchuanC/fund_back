@@ -17,7 +17,6 @@ def index():
 def summary(page):
     """返回基金完整分类"""
     c = Classify.query.filter_by(update_date=util.lastday_of_lastmonth()).paginate(page, 25, False)
-    print(c.__dict__)
     db.session.close()
     page, per_page, total, items = util.zip_paginate(c)
     c = [x.to_dict() for x in items]
@@ -28,12 +27,12 @@ def summary(page):
 @main.route("/summary/info/<int:page>")
 def summary_info(page):
     ret = db.session.query(
-        Classify.classify, Classify.branch, BasicInfo.windcode, BasicInfo.sec_name, BasicInfo.fund_setupdate
+        Classify.classify, Classify.branch, BasicInfo.windcode, BasicInfo.sec_name, BasicInfo.fund_benchmark, BasicInfo.fund_setupdate
     ).join(BasicInfo, and_(Classify.windcode == BasicInfo.windcode, BasicInfo.type == "CSI")).paginate(page, 25)
     page, per_page, total, items = util.zip_paginate(ret)
     ret = [{
         "classify": x.classify, "branch": x.branch, "windcode": x.windcode, "sec_name": x.sec_name,
-        "setupdate": x.fund_setupdate
+        "benchmark": x.fund_benchmark, "setupdate": x.fund_setupdate.strftime("%Y-%m-%d")
     } for x in items]
     return make_response(jsonify({"data": ret, "page": page, "total": total, "per_page": per_page}), 200)
 
