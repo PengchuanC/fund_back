@@ -5,6 +5,7 @@ from . import main
 from ... import db
 from ..models.classify import Classify
 from ..models.basic_info import BasicInfo
+from ..models.news import Toutiao
 from . import util
 
 
@@ -37,13 +38,16 @@ def summary_info(page):
     return make_response(jsonify({"data": ret, "page": page, "total": total, "per_page": per_page}), 200)
 
 
-@main.route("/test<int:page>", methods=["GET", "POST"])
-def test(page):
-    c = BasicInfo.query.filter_by(type="CSI").paginate(page, 20, False)
-    db.session.close()
-    print(c.__dict__)
-    total = c.total
-    page = c.page
-    items = c.items
-    items = [i.to_dict() for i in items]
-    return make_response(jsonify({"data": items, "page": page, "total": total}), 200)
+@main.route("/news/<int:page>", methods=['GET'])
+def news(page):
+    ret = db.session.query(Toutiao).order_by(db.desc('savedate')).paginate(page, 10)
+    page, per_page, total, items = util.zip_paginate(ret)
+    ret = [x.to_dict() for x in items]
+    return make_response(jsonify({"data": ret, "page": page, "total": total, "per_page": per_page}), 200)
+
+
+@main.route("/test/<int:pages>", methods=["GET", "POST"])
+def test(pages):
+    from .functions import toutiao_api
+    data = toutiao_api.news_format(pages)
+    return make_response(jsonify({"data": data, "pages": pages}), 200)
