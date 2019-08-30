@@ -1,4 +1,4 @@
-from flask import jsonify, make_response
+from flask import jsonify, make_response, request
 from sqlalchemy import and_
 
 from . import main
@@ -7,6 +7,7 @@ from ..models.classify import Classify
 from ..models.basic_info import BasicInfo
 from ..models.news import Toutiao
 from . import util
+from .functions import for_plot
 
 
 @main.route('/', methods=['GET',  'POST'])
@@ -46,8 +47,54 @@ def news(page):
     return make_response(jsonify({"data": ret, "page": page, "total": total, "per_page": per_page}), 200)
 
 
+@main.route("/branch", methods=["GET", "POST"])
+def branch_and_classify():
+    branch, bc = for_plot.branch_and_classify()
+    return make_response(jsonify({"data": bc, "branch": branch}), 200)
+
+
+@main.route("/plot/exist", methods=["GET"])
+def exists_years():
+    classify = request.args.get("classify")
+    data, mean, date = for_plot.plot_exits_years(classify)
+    return make_response(jsonify({"data": data, "mean": mean, "classify": classify, "date": date}), 200)
+
+
+@main.route("/plot/scale", methods=["GET"])
+def fund_scale():
+    classify = request.args.get("classify")
+    data, date = for_plot.plot_scale(classify)
+    return make_response(jsonify({"data": data, "classify": classify, "date": date}), 200)
+
+
+@main.route("/plot/comp", methods=["GET"])
+def company():
+    classify = request.args.get("classify")
+    data, date = for_plot.market_position(classify)
+    return make_response(jsonify({"data": data, "classify": classify, "date": date}), 200)
+
+
+@main.route("/plot/scale&year", methods=["GET"])
+def scale_and_years():
+    classify = request.args.get("classify")
+    data, date = for_plot.scale_and_years(classify)
+    return make_response(jsonify({"data": data, "classify": classify, "date": date}), 200)
+
+
+@main.route("/plot", methods=["GET"])
+def plot():
+    classify = request.args.get("classify")
+    exist_data, *_ = for_plot.plot_exits_years(classify)
+    scale_data, date = for_plot.plot_scale(classify)
+    comp, _ = for_plot.market_position(classify)
+    sc_y, _ = for_plot.scale_and_years(classify)
+    return make_response(jsonify({"data": {
+        "exist": exist_data, "scale": scale_data, 'company': comp, "scale_year": sc_y
+    }, "classify": classify, "date": date}), 200)
+
+
 @main.route("/test/<int:pages>", methods=["GET", "POST"])
 def test(pages):
-    from .functions import toutiao_api
-    data = toutiao_api.news_format(pages)
-    return make_response(jsonify({"data": data, "pages": pages}), 200)
+    from .functions import for_plot
+    for_plot.scale_and_years("标准股票型")
+    return make_response(jsonify({"data": 0, "pages": pages}), 200)

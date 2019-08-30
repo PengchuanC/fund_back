@@ -1,6 +1,5 @@
 import json
 import requests as r
-import pandas as pd
 
 
 def news_url_format(max_behot_time=0):
