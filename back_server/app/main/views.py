@@ -7,7 +7,7 @@ from ..models.classify import Classify
 from ..models.basic_info import BasicInfo
 from ..models.news import Toutiao
 from . import util
-from .functions import for_plot
+from .functions import for_plot, summary as summarize
 
 
 @main.route('/', methods=['GET',  'POST'])
@@ -28,9 +28,10 @@ def summary(page):
 
 @main.route("/summary/info/<int:page>")
 def summary_info(page):
+    update_date = db.session.query(db.func.max(Classify.update_date)).one()[0]
     ret = db.session.query(
         Classify.classify, Classify.branch, BasicInfo.windcode, BasicInfo.sec_name, BasicInfo.fund_benchmark, BasicInfo.fund_setupdate
-    ).join(BasicInfo, and_(Classify.windcode == BasicInfo.windcode, BasicInfo.type == "CSI")).paginate(page, 25)
+    ).join(BasicInfo, and_(Classify.windcode == BasicInfo.windcode, BasicInfo.type == "CSI")).fliter(Classify.update_date == update_date).paginate(page, 25)
     page, per_page, total, items = util.zip_paginate(ret)
     ret = [{
         "classify": x.classify, "branch": x.branch, "windcode": x.windcode, "sec_name": x.sec_name,
@@ -39,9 +40,15 @@ def summary_info(page):
     return make_response(jsonify({"data": ret, "page": page, "total": total, "per_page": per_page}), 200)
 
 
+@main.route("/summary/bc", methods=["GET", "POST"])
+def summary_branch_classify():
+    bc = summarize.summary()
+    return make_response(jsonify({"data": bc}), 200)
+
+
 @main.route("/news/<int:page>", methods=['GET'])
 def news(page):
-    ret = db.session.query(Toutiao).order_by(db.desc('savedate')).paginate(page, 10)
+    ret = db.session.query(Toutiao).order_by(db.desc('savedate')).paginate(page, 20)
     page, per_page, total, items = util.zip_paginate(ret)
     ret = [x.to_dict() for x in items]
     return make_response(jsonify({"data": ret, "page": page, "total": total, "per_page": per_page}), 200)
@@ -95,6 +102,5 @@ def plot():
 
 @main.route("/test/<int:pages>", methods=["GET", "POST"])
 def test(pages):
-    from .functions import for_plot
-    for_plot.scale_and_years("标准股票型")
+    summarize.summary()
     return make_response(jsonify({"data": 0, "pages": pages}), 200)
