@@ -1,3 +1,5 @@
+import json
+
 from flask import jsonify, make_response, request
 from sqlalchemy import and_
 
@@ -7,10 +9,10 @@ from ..models.classify import Classify
 from ..models.basic_info import BasicInfo
 from ..models.news import Toutiao
 from . import util
-from .functions import for_plot, summary as summarize
+from .functions import for_plot, filters, summary as summarize
 
 
-@main.route('/', methods=['GET',  'POST'])
+@main.route('/', methods=['GET', 'POST'])
 def index():
     return "HOME_PAGE"
 
@@ -30,8 +32,10 @@ def summary(page):
 def summary_info(page):
     update_date = db.session.query(db.func.max(Classify.update_date)).one()[0]
     ret = db.session.query(
-        Classify.classify, Classify.branch, BasicInfo.windcode, BasicInfo.sec_name, BasicInfo.fund_benchmark, BasicInfo.fund_setupdate
-    ).join(BasicInfo, and_(Classify.windcode == BasicInfo.windcode, BasicInfo.type == "CSI")).fliter(Classify.update_date == update_date).paginate(page, 25)
+        Classify.classify, Classify.branch, BasicInfo.windcode, BasicInfo.sec_name, BasicInfo.fund_benchmark,
+        BasicInfo.fund_setupdate
+    ).join(BasicInfo, and_(Classify.windcode == BasicInfo.windcode, BasicInfo.type == "CSI")).filter(
+        Classify.update_date == update_date).paginate(page, 25)
     page, per_page, total, items = util.zip_paginate(ret)
     ret = [{
         "classify": x.classify, "branch": x.branch, "windcode": x.windcode, "sec_name": x.sec_name,
@@ -100,7 +104,72 @@ def plot():
     }, "classify": classify, "date": date}), 200)
 
 
-@main.route("/test/<int:pages>", methods=["GET", "POST"])
-def test(pages):
-    summarize.summary()
-    return make_response(jsonify({"data": 0, "pages": pages}), 200)
+@main.route("/filter", methods=["POST"])
+def funds_filter():
+    data = request.get_data()
+    data = json.loads(data)
+    funds = filters.execute_basic_filter(data)
+    if isinstance(funds, int):
+        return make_response("invalid request", 400)
+    return make_response({"data": list(funds)}, 200)
+
+
+@main.route("/advance_filter", methods=["POST"])
+def funds_advance_filter():
+    data = request.get_data()
+    data = json.loads(data)
+    funds = data['funds']
+    f = data["filter"]
+    funds = filters.execute_advance_filter(funds, f)
+    return make_response({"data": list(funds)}, 200)
+
+
+@main.route("/filter/info", methods=["GET", "POST"])
+def funds_filter_basic_info():
+    data = json.loads(request.get_data())
+    funds = data["funds"]
+    page = data["page"]
+    ret = filters.basic_info(funds, page)
+    page, per_page, total, items = util.zip_paginate(ret)
+    ret = [{
+        "classify": x.classify, "branch": x.branch, "windcode": x.windcode, "sec_name": x.sec_name,
+        "benchmark": x.fund_benchmark, "setupdate": x.fund_setupdate.strftime("%Y-%m-%d")
+    } for x in items]
+    return make_response(jsonify({"data": ret, "page": page, "total": total, "per_page": per_page}), 200)
+
+
+@main.route("/test", methods=["GET", "POST"])
+def test():
+    funds = filters.funds_by_classify("标准股票型")
+    print(len(funds))
+    funds = filters.lever(funds)
+    print(len(funds))
+    funds = filters.fund_years(funds, 1)
+    print(len(funds))
+    funds = filters.net_asset(funds, 0.5, 0.5)
+    print(len(funds))
+    funds = filters.single_hold_shares(funds)
+    print(len(funds))
+    funds = filters.over_index_return(funds, "000906.SH", 1)
+    print(len(funds))
+    funds = filters.over_bench_return(funds, 1)
+    print(len(funds))
+    funds = filters.month_wind_ratio(funds, 1)
+    print(len(funds))
+    funds = filters.max_downside_over_average(funds, 1)
+    print(len(funds))
+    funds = filters.corp_scale_level(funds, 0.5, "标准股票型")
+    print(len(funds))
+    funds = filters.manager_working_years(funds, 3)
+    print(len(funds))
+    funds = filters.manager_working_years_on_this_fund(funds, 0.5)
+    print(len(funds))
+    funds = filters.manager_geometry_return(funds, 0)
+    print(len(funds))
+    funds = filters.manager_return_on_this_fund(funds, 0.05)
+    print(len(funds))
+    funds = filters.wind_rating(funds, 3)
+    print(len(funds))
+    funds = filters.recent_years_over_others(funds, 3, 1/3)
+    print(len(funds))
+    return make_response(jsonify({"data": list(funds)}), 200)

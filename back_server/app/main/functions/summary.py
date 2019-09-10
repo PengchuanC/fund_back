@@ -1,6 +1,5 @@
 from functools import lru_cache
 
-from back_server.app.models.basic_info import BasicInfo as BI
 from back_server.app.models.indicators_plot import IndicatorsForPlot, db
 from back_server.app.models.classify import Classify
 
