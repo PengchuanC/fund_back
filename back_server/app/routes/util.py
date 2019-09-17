@@ -12,10 +12,10 @@ def lastday_of_lastmonth():
     if today_day == dates[-1]:
         return today
     elif today_day != dates[-1] and today_month != 1:
-        dates = calendar.monthrange(today_year, today_month-1)
-        return datetime.date(today_year, today_month-1, dates[-1])
+        dates = calendar.monthrange(today_year, today_month - 1)
+        return datetime.date(today_year, today_month - 1, dates[-1])
     else:
-        return datetime.date(today_year-1, 12, 31)
+        return datetime.date(today_year - 1, 12, 31)
 
 
 def zip_paginate(p):

@@ -22,7 +22,12 @@ def create_app(config_name):
     db.init_app(app)
     cache.init_app(app)
 
-    from .app.main import main as blue
+    from .app.routes import main as blue
+    from .app.routes.news import news
     app.register_blueprint(blue)
+    app.register_blueprint(news, url_prefix="/api/news")
+
+    from .app.routes.apiv1 import rest
+    app.register_blueprint(rest, url_prefix="/api/v1/news")
 
     return app

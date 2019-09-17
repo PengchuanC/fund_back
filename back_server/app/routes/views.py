@@ -7,7 +7,6 @@ from . import main
 from ... import db
 from ..models.classify import Classify
 from ..models.basic_info import BasicInfo
-from ..models.news import Toutiao
 from . import util
 from .functions import for_plot, filters, summary as summarize
 
@@ -48,14 +47,6 @@ def summary_info(page):
 def summary_branch_classify():
     bc = summarize.summary()
     return make_response(jsonify({"data": bc}), 200)
-
-
-@main.route("/news/<int:page>", methods=['GET'])
-def news(page):
-    ret = db.session.query(Toutiao).order_by(db.desc('savedate')).paginate(page, 20)
-    page, per_page, total, items = util.zip_paginate(ret)
-    ret = [x.to_dict() for x in items]
-    return make_response(jsonify({"data": ret, "page": page, "total": total, "per_page": per_page}), 200)
 
 
 @main.route("/branch", methods=["GET", "POST"])
@@ -170,6 +161,6 @@ def test():
     print(len(funds))
     funds = filters.wind_rating(funds, 3)
     print(len(funds))
-    funds = filters.recent_years_over_others(funds, 3, 1/3)
+    funds = filters.recent_years_over_others(funds, 3, 1 / 3)
     print(len(funds))
     return make_response(jsonify({"data": list(funds)}), 200)

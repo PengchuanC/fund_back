@@ -52,7 +52,7 @@ def fund_years(funds, left, right=50):
     """基金存续时间位于[left, right]"""
     c = Classify
     latest = latest_day_in_classify()
-    left = latest - timedelta(left*365)
+    left = latest - timedelta(left * 365)
     right = latest - timedelta(right * 365)
     funds = db.session.query(c.windcode).filter(c.fund_setupdate.between(right, left), c.windcode.in_(funds)).all()
     funds = set([x[0] for x in funds])
@@ -69,12 +69,12 @@ def net_asset(funds, recent_asset_level, avg_asset_level):
     annual = [x for x in rpt if x.month == 12][0]
     funds = db.session.query(ins.windcode).filter(
         ins.windcode.in_(funds), ins.rpt_date == recent, ins.indicator == "NETASSET_TOTAL",
-        ins.numeric >= recent_asset_level*1e8
+                                 ins.numeric >= recent_asset_level * 1e8
     ).all()
     funds = {x[0] for x in funds}
     funds = db.session.query(ins.windcode).filter(
         ins.windcode.in_(funds), ins.rpt_date == annual, ins.indicator == "PRT_AVGNETASSET",
-        ins.numeric >= avg_asset_level*1e8
+                                 ins.numeric >= avg_asset_level * 1e8
     ).all()
     funds = {x[0] for x in funds}
     return funds
@@ -130,7 +130,7 @@ def month_win_ratio(funds, year, ratio=0.5):
         ins.update_date == latest, ins.indicator == "ABSOLUTE_UPDOWNMONTHRATIO", ins.note == str(year),
         ins.windcode.in_(funds)
     ).all()
-    funds = {x[0] for x in funds if int(x[1].split("/")[0])/int(x[1].split("/")[0]) > ratio}
+    funds = {x[0] for x in funds if int(x[1].split("/")[0]) / int(x[1].split("/")[0]) > ratio}
     return funds
 
 
@@ -168,7 +168,7 @@ def corp_scale_level(funds, level):
     corps = list(zip(corps.items()))
     corps = [x[0] for x in corps]
     corps = sorted(corps, key=lambda x: x[1], reverse=True)
-    corps = corps[: floor(len(corps)*level)]
+    corps = corps[: floor(len(corps) * level)]
     corps = {x[0] for x in corps}
     funds = db.session.query(ins.windcode, ins.text).filter(
         ins.indicator == "FUND_CORP_FUNDMANAGEMENTCOMPANY", ins.windcode.in_(funds)
@@ -195,7 +195,7 @@ def manager_working_years_on_this_fund(funds, year):
     """基金经历在本基金任职年限超过？年"""
     ins = Indicators
     latest = latest_day_in_indicators()
-    funds = db.session.query(ins.windcode, db.func.ifnull(ins.numeric, 0)/365).filter(
+    funds = db.session.query(ins.windcode, db.func.ifnull(ins.numeric, 0) / 365).filter(
         ins.update_date == latest, ins.indicator == "FUND_MANAGER_ONTHEPOSTDAYS",
         ins.windcode.in_(funds)
     ).all()
@@ -253,7 +253,7 @@ def recent_years_over_others(funds, year, level):
     ).all()
     funds = [(x[0], x[1]) for x in funds]
     funds = sorted(funds, key=lambda x: x[1], reverse=True)
-    funds = funds[: floor(len(funds)*level)]
+    funds = funds[: floor(len(funds) * level)]
     funds = {x[0] for x in funds}
     funds = {x for x in f if x in funds}
     return funds
@@ -262,7 +262,8 @@ def recent_years_over_others(funds, year, level):
 def execute_basic_filter(data):
     """执行简单的筛选规则，传入参数为前端POST请求参数"""
     if data["classify"]:
-        funds = funds_by_classify(data['classify'])
+        classify = [x.split("-")[-1] for x in data["classify"]]
+        funds = funds_by_classify(classify)
     else:
         return -1
     if data["lever"]:
@@ -293,9 +294,9 @@ def execute_advance_filter(funds, f):
     if f["workOnThis"]:
         funds = manager_return_on_this_fund(funds, f["workOnThis"])
     if f["geoReturn"]:
-        funds = manager_geometry_return(funds, f["geoReturn"]*100)
+        funds = manager_geometry_return(funds, f["geoReturn"] * 100)
     if f["thisReturn"]:
-        funds = manager_return_on_this_fund(funds, f["thisReturn"]*100)
+        funds = manager_return_on_this_fund(funds, f["thisReturn"] * 100)
     if f["windRating"]:
         funds = wind_rating(funds, f["windRating"])
     if f["recentLevel"]:
@@ -304,7 +305,7 @@ def execute_advance_filter(funds, f):
             level = level[1: -1]
             year, level = level.split(", ")
             level = level.split("/")
-            funds = recent_years_over_others(funds, int(year), float(level[0])/float(level[1]))
+            funds = recent_years_over_others(funds, int(year), float(level[0]) / float(level[1]))
     return funds
 
 
