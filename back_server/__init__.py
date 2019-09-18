@@ -28,6 +28,6 @@ def create_app(config_name):
     app.register_blueprint(news, url_prefix="/api/news")
 
     from .app.routes.apiv1 import rest
-    app.register_blueprint(rest, url_prefix="/api/v1/news")
+    app.register_blueprint(rest, url_prefix="/api/v1")
 
     return app

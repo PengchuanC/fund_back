@@ -1,71 +1,26 @@
 from flask_restful import Api, Resource, marshal_with, fields, reqparse
+from sqlalchemy import or_
 
 from . import rest
 
-from ...models.news import News, db
-from .. import util
+from ...models.basic_info import BasicInfo,db
 
 
 api = Api(rest)
 
-resource_fields = {
-    "data": fields.List(
-        fields.Nested({
-            "id": fields.Integer,
-            "title": fields.String,
-            "abstract": fields.String,
-            "url": fields.String,
-            "source": fields.String,
-            "savedate": fields.DateTime(dt_format='iso8601'),
-            "keyword": fields.String
-        })
-    ),
-    "per_page": fields.Integer,
-    "page": fields.Integer,
-    "total": fields.Integer
-}
 
-
-@api.resource("/")
-class IndexViews(Resource):
+@api.resource("/fundlist")
+class FundListView(Resource):
     def get(self):
-        return {"data": "api version = v1"}
+        bi = BasicInfo
+        ret = bi.query.with_entities(bi.windcode, bi.sec_name).filter(bi.type == 'CSI').all()
+        return ret
 
-
-@api.resource("/breaking/<int:page>")
-class BreakingViews(Resource):
-
-    @marshal_with(resource_fields)
-    def get(self, page):
-        """热点新闻"""
-        ret = News.query.order_by(db.desc('savedate')).filter(News.keyword.is_(None)).paginate(page, 20)
-        page, per_page, total, items = util.zip_paginate(ret)
-        resp = {"data": items, "page": page, "per_page": per_page, "total": total}
-        return resp
-
-
-@api.resource("/follow/keywords")
-class FollowedKeywordsViews(Resource):
-
-    def get(self):
-        """获取关注的全部关键词"""
-        ret = db.session.query(db.func.distinct(News.keyword)).all()
-        keywords = [x[0] for x in ret if x[0] is not None]
-        return {"data": keywords}
-
-
-@api.resource("/follow")
-class FollowedNewsViews(Resource):
-
-    @marshal_with(resource_fields)
     def post(self):
+        bi = BasicInfo
         parser = reqparse.RequestParser()
-        parser.add_argument("keyword", type=str)
-        parser.add_argument("page", type=int)
+        parser.add_argument("search", type=str)
         args = parser.parse_args()
-        keyword = args["keyword"]
-        page = args["page"]
-        ret = News.query.order_by(db.desc('savedate')).filter(News.keyword == keyword).paginate(page, 20)
-        page, per_page, total, items = util.zip_paginate(ret)
-        resp = {"data": items, "page": page, "per_page": per_page, "total": total}
-        return resp
+        search = f'%{args["search"]}%'
+        ret = bi.query.with_entities(db.func.distinct(bi.windcode), bi.sec_name).filter(bi.type == "CSI").filter(or_(bi.sec_name.ilike(search), bi.windcode.ilike(search))).all()
+        return ret[:10] if len(ret) > 10 else ret

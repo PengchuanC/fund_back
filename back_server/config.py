@@ -34,6 +34,7 @@ class DevelopmentConfig(Config):
     user, password, host = DATABASE
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
                    f"mysql+pymysql://{user}:{password}@{host}/fund_filter?charset=utf8mb4"
+    DEBUG = True
 
 
 config = {
