@@ -1,6 +1,6 @@
 import os
-from flask_script import Manager, Shell
-from flask_migrate import Migrate, MigrateCommand
+from flask_script import Manager
+from flask_migrate import Migrate
 
 from back_server import create_app, db
 

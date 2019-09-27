@@ -1,6 +1,7 @@
+import os
 import json
 
-from flask import jsonify, make_response, request
+from flask import jsonify, make_response, request, send_file
 from sqlalchemy import and_
 
 from . import main
@@ -45,8 +46,15 @@ def summary_info(page):
 
 @main.route("/summary/bc", methods=["GET", "POST"])
 def summary_branch_classify():
+    ret = summarize.summarise()
     bc = summarize.summary()
     return make_response(jsonify({"data": bc}), 200)
+
+
+@main.route("/summary/bc/v2", methods=["GET", "POST"])
+def summary_branch_classify2():
+    ret = summarize.summarise()
+    return make_response(jsonify(ret), 200)
 
 
 @main.route("/branch", methods=["GET", "POST"])
@@ -120,10 +128,24 @@ def funds_filter_basic_info():
     data = json.loads(request.get_data())
     funds = data["funds"]
     page = data["page"]
-    ret = filters.basic_info(funds, page)
-    page, per_page, total, items = util.zip_paginate(ret)
-    ret = [{
-        "classify": x.classify, "branch": x.branch, "windcode": x.windcode, "sec_name": x.sec_name,
-        "benchmark": x.fund_benchmark, "setupdate": x.fund_setupdate.strftime("%Y-%m-%d")
-    } for x in items]
-    return make_response(jsonify({"data": ret, "page": page, "total": total, "per_page": per_page}), 200)
+    _filters = data["filter"]
+    data, page, per_page, total = filters.fund_details(funds, _filters, page)
+    return make_response(jsonify({"data": data, "page": page, "total": total, "per_page": per_page}), 200)
+
+
+@main.route("/filter/info/result", methods=["POST"])
+def fund_filter_basic_info_export():
+    data = json.loads(request.get_data())
+    funds = data["funds"]
+    _filters = data["filter"]
+    filters.fund_details_to_excel(funds, _filters)
+    return make_response(jsonify({'message': "OK", "url": "filter/info/results"}), 200)
+
+
+@main.route("/filter/info/results", methods=["GET"])
+def fund_filter_basic_info_export2():
+    file = os.path.abspath("./back_server/static/筛选结果.xlsx")
+    response = make_response(send_file(file, as_attachment=True, attachment_filename="筛选结果.xlsx"), 200)
+    response.headers["Content-Disposition"] = "attachment;filename=results.xlsx;"
+    response.headers["Content-Type"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    return response

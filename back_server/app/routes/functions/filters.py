@@ -1,8 +1,9 @@
 from datetime import timedelta
 from functools import lru_cache
-from math import floor
+from math import floor, pow
 
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
+import pandas as pd
 
 from back_server import cache
 from ...models.indicators import Indicators, db
@@ -148,7 +149,7 @@ def max_downside_over_average(funds, year, ratio=None):
         mean = sum(mmd) / len(mmd)
         funds = {x[0] for x in funds if x[1] > mean}
     else:
-        funds = {x[0] for x in funds if x[1] > -ratio}
+        funds = {x[0] for x in funds if x[1]/100 > -ratio}
     return funds
 
 
@@ -261,6 +262,7 @@ def recent_years_over_others(funds, year, level):
 
 def execute_basic_filter(data):
     """执行简单的筛选规则，传入参数为前端POST请求参数"""
+    # print(data)
     if data["classify"]:
         classify = [x.split("-")[-1] for x in data["classify"]]
         funds = funds_by_classify(classify)
@@ -318,3 +320,74 @@ def basic_info(funds, page):
     ).join(BasicInfo, and_(Classify.windcode == BasicInfo.windcode, BasicInfo.type == "CSI")).filter(
         Classify.update_date == update_date, BasicInfo.windcode.in_(funds)).paginate(page, 25)
     return ret
+
+
+def fund_details(funds, filters, page=None):
+    """
+    基金详细信息
+    :param page: 后端分页面
+    :param funds: 基金列表
+    :param filters: 筛选规则
+    :return: 基金详细信息
+    """
+    date = latest_day_in_indicators()
+    year = filters['existYear'] if filters['existYear'] else 1
+    rpt = db.session.query(db.func.distinct(Indicators.rpt_date)).filter(Indicators.update_date == date).order_by(Indicators.rpt_date.desc()).first()[0]
+
+    names = BasicInfo.query.with_entities(db.func.distinct(BasicInfo.windcode), BasicInfo.sec_name, BasicInfo.fund_setupdate).filter(BasicInfo.windcode.in_(funds), BasicInfo.type=="CSI")
+    if page:
+        p = names.paginate(page, 50)
+        names = p.items
+        page = p.page
+        per_page = p.per_page
+        total = p.total
+    else:
+        names = names.all()
+        page = None
+        per_page = None
+        total = None
+    names = {x[0]: (x[1], x[2]) for x in names}
+
+    data = Indicators.query \
+        .filter(Indicators.update_date == date, Indicators.windcode.in_(names.keys())) \
+        .filter(or_(Indicators.note == year, Indicators.note.is_(None))) \
+        .filter(Indicators.rpt_date == rpt).all()
+    data = [x.to_dict() for x in data]
+    codes = list({x['windcode'] for x in data})
+
+    ret = {x: {} for x in codes}
+    for x in data:
+        if x["windcode"] in (names.keys()):
+            ret[x["windcode"]][x["indicator"]] = round(float(x["numeric"]), 2) if x["numeric"] else x['text']
+            ret[x["windcode"]]["sec_name"] = names[x["windcode"]][0]
+            ret[x["windcode"]]["setup"] = names[x["windcode"]][1].strftime("%Y/%m/%d")
+
+    ret = [
+        {
+            "windCode": x, "corp": y["FUND_CORP_FUNDMANAGEMENTCOMPANY"],
+            "winRatio": y["ABSOLUTE_UPDOWNMONTHRATIO"],
+            "scale": y["FUND_FUNDSCALE"]/1e8 if y["FUND_FUNDSCALE"] else y["FUND_FUNDSCALE"],
+            "managerAnnualReturn": y["FUND_MANAGER_GEOMETRICANNUALIZEDYIELD"],
+            "workingYears": y["FUND_MANAGER_MANAGERWORKINGYEARS"],
+            "workingOnThis": round(y["FUND_MANAGER_ONTHEPOSTDAYS"]/365, 2),
+            "singleHold": y["HOLDER_SINGLE_TOTALHOLDINGPCT"],
+            "overBench": y["NAV_OVER_BENCH_RETURN_PER"],
+            "workingAnnualReturn": y["NAV_PERIODICANNUALIZEDRETURN"],
+            "netAsset": y["PRT_FUNDNETASSET_TOTAL"],
+            "rating": int(y["RATING_WIND3Y"]) if y["RATING_WIND3Y"] else y["RATING_WIND3Y"],
+            "return": pow(1+y["RETURN"], 1/year) if y["RETURN"] else y["RETURN"],
+            "maxDownSide": y["RISK_MAXDOWNSIDE"],
+            "secName": y["sec_name"],
+            "existYear": year,
+            "setup": y["setup"],
+            "update": date.strftime("%Y/%m/%d")
+        }
+        for x, y in ret.items()]
+
+    return ret, page, per_page, total
+
+
+def fund_details_to_excel(funds, filters):
+    data, *_ = fund_details(funds, filters)
+    data = pd.DataFrame(data)
+    data.to_excel("./back_server/static/筛选结果.xlsx")

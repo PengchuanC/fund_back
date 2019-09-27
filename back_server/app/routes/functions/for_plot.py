@@ -110,7 +110,5 @@ def scale_and_years(classify):
         for x in data if
         x[0] if all({x[1], x[2]})]
     data = sorted(data, key=lambda x: x["存续时间"])
-    data = OrderedDict(
-        {x["基金简称"]: [{"存续时间": x["存续时间"], "基金规模": x["基金规模"], "近似年限": int(x["存续时间"])}] for x in data}
-    )
+    data = [{"基金简称": x["基金简称"], "存续时间": x["存续时间"], "基金规模": x["基金规模"], "近似年限": int(x["存续时间"])} for x in data]
     return data, _latest_update_date
