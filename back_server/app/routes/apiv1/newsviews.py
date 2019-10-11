@@ -1,3 +1,5 @@
+import datetime
+
 from flask_restful import Api, Resource, marshal_with, fields, reqparse
 
 from . import rest
@@ -68,4 +70,38 @@ class FollowedNewsViews(Resource):
         ret = News.query.order_by(db.desc('savedate')).filter(News.keyword == keyword).paginate(page, 20)
         page, per_page, total, items = util.zip_paginate(ret)
         resp = {"data": items, "page": page, "per_page": per_page, "total": total}
+        return resp
+
+
+@api.resource("/newslist")
+class NewsListViews(Resource):
+
+    @marshal_with(resource_fields)
+    def get(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("page", type=int)
+        parser.add_argument("section", type=str)
+        parser.add_argument("date", type=str)
+        parser.add_argument("search", type=str)
+        args = parser.parse_args()
+        page = args["page"]
+        date = args["date"]
+        search = args["search"]
+        section = args["section"]
+
+        ret = News.query.order_by(News.savedate.desc(), News.id.desc())
+        if date:
+            date = datetime.datetime.strptime(date[0: 10], "%Y-%m-%d")
+            date_2 = date + datetime.timedelta(days=1)
+            ret = ret.filter(News.savedate.between(date, date_2))
+        if search:
+            ret = ret.filter(db.or_(News.title.like("%"+search+"%")), News.abstract.like("%"+search+"%"))
+        if section and section != "whole":
+            sections = {"economy": "宏观", "finance": "金融", "company": "商业", "japan": "日本"}
+            if section in sections.keys():
+                section = sections[section]
+            ret = ret.filter(News.keyword == section)
+        ret = ret.paginate(page, 25, False)
+        _page, per_page, total, items = util.zip_paginate(ret)
+        resp = {"data": items, "page": _page, "per_page": per_page, "total": total}
         return resp

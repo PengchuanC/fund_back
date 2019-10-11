@@ -3,7 +3,7 @@ from sqlalchemy import or_
 
 from . import rest
 
-from ...models.basic_info import BasicInfo,db
+from ...models.basic_info import BasicInfo, db
 
 
 api = Api(rest)
