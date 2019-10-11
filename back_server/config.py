@@ -26,7 +26,7 @@ class Config:
 class ProductionConfig(Config):
     """运行环境配置"""
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-                              'mysql+pymysql://fund:123456@sh-cdb-1ier4gdm.sql.tencentcdb.com:61694/fund_filter?charset=utf8mb4'
+                              'mysql+pymysql://fund:123456@cdb-p3ccshwm.cd.tencentcdb.com:10053/fund_filter?charset=utf8mb4'
 
 
 class DevelopmentConfig(Config):
