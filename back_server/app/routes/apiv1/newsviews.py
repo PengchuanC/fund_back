@@ -103,5 +103,6 @@ class NewsListViews(Resource):
             ret = ret.filter(News.keyword == section)
         ret = ret.paginate(page, 25, False)
         _page, per_page, total, items = util.zip_paginate(ret)
+        items = sorted(items, key=lambda x: x.title)
         resp = {"data": items, "page": _page, "per_page": per_page, "total": total}
         return resp
