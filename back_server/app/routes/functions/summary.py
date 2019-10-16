@@ -53,7 +53,7 @@ def summarise():
     data = db.session.query(cls.windcode, cls.branch, cls.classify, ins.numeric).filter(cls.update_date == latest_cls,
                                                                                         ins.update_date == latest_ins,
                                                                                         ins.rpt_date == latest_rpt,
-                                                                                        ins.indicator == "NETASSET_TOTAL",
+                                                                                        ins.indicator == "FUND_FUNDSCALE",
                                                                                         cls.windcode == ins.windcode).all()
     total = {x[0]: float(x[-1]) if x[-1] else 0 for x in data}
     t_c, t_s = len(total.keys()), format(round(sum(total.values()) / 1e8, 0), '0,.0f')

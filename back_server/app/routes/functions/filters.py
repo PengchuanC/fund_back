@@ -96,29 +96,37 @@ def single_hold_shares(funds, percent: int = 40):
 @cache.cached()
 def over_index_return(funds, index_code, year):
     """区间收益超过指定的指数的区间收益"""
+    index_code = index_code.split(",")
     ins = Indicators
     latest = latest_day_in_indicators()
     funds = db.session.query(ins.windcode, db.func.ifnull(ins.numeric, 0)).filter(
         ins.update_date == latest, ins.indicator == "RETURN", ins.windcode.in_(funds)
     ).all()
     index = db.session.query(ins.windcode, db.func.ifnull(ins.numeric, 0)).filter(
-        ins.update_date == latest, ins.indicator == "RETURN", ins.windcode == index_code,
+        ins.update_date == latest, ins.indicator == "RETURN", ins.windcode.in_(index_code),
         ins.note == str(year)
-    ).first()
-    funds = {x[0] for x in funds if x[1] > index[1]}
+    ).all()
+    if len(index_code) == 1:
+        index = index[0]
+        funds = {x[0] for x in funds if x[1] > index[1]}
+    elif len(index_code) == 2:
+        index = (index[0][1]+index[1][1]) / 2
+        funds = {x[0] for x in funds if x[1] > index}
     return funds
 
 
 @cache.cached()
 def over_bench_return(funds, year):
-    """区间收益超过基准"""
+    """区间收益超过基准
+    此处应当注意如易方达中小盘等采用天相指数的基金，wind并没有相关数据，此处跳过这些检查，让基准收益 >= 0
+    """
     ins = Indicators
     latest = latest_day_in_indicators()
     funds = db.session.query(ins.windcode, db.func.ifnull(ins.numeric, 0)).filter(
         ins.update_date == latest, ins.indicator == "NAV_OVER_BENCH_RETURN_PER", ins.note == str(year),
         ins.windcode.in_(funds)
     ).all()
-    funds = {x[0] for x in funds if x[1] > 0}
+    funds = {x[0] for x in funds if x[1] >= 0}
     return funds
 
 
@@ -131,8 +139,17 @@ def month_win_ratio(funds, year, ratio=0.5):
         ins.update_date == latest, ins.indicator == "ABSOLUTE_UPDOWNMONTHRATIO", ins.note == str(year),
         ins.windcode.in_(funds)
     ).all()
-    funds = {x[0] for x in funds if int(x[1].split("/")[0]) / int(x[1].split("/")[0]) > ratio}
-    return funds
+
+    _funds = []
+    for fund in funds:
+        up, down = fund[1].split("/")
+        if int(down) == 0:
+            _funds.append(fund[0])
+        else:
+            if int(up)/int(down) > ratio:
+                _funds.append(fund[0])
+
+    return _funds
 
 
 @cache.cached()
@@ -375,7 +392,7 @@ def fund_details(funds, filters, page=None):
             "workingAnnualReturn": y["NAV_PERIODICANNUALIZEDRETURN"],
             "netAsset": y["PRT_FUNDNETASSET_TOTAL"],
             "rating": int(y["RATING_WIND3Y"]) if y["RATING_WIND3Y"] else y["RATING_WIND3Y"],
-            "return": pow(1+y["RETURN"], 1/year) if y["RETURN"] else y["RETURN"],
+            "return": (pow(1+y["RETURN"]/100, 1/year)-1)*100 if y["RETURN"] else None,
             "maxDownSide": y["RISK_MAXDOWNSIDE"],
             "secName": y["sec_name"],
             "existYear": year,
