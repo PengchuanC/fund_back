@@ -89,7 +89,7 @@ class NewsListViews(Resource):
         search = args["search"]
         section = args["section"]
 
-        ret = News.query.order_by(News.savedate.desc(), News.id.desc())
+        ret = News.query.order_by(News.savedate.desc(), News.title.desc())
         if date:
             date = datetime.datetime.strptime(date[0: 10], "%Y-%m-%d")
             date_2 = date + datetime.timedelta(days=1)
@@ -102,7 +102,6 @@ class NewsListViews(Resource):
                 section = sections[section]
             ret = ret.filter(News.keyword == section)
         ret = ret.paginate(page, 25, False)
-        ret = ret.order_by(News.title.desc(), News.savedate.desc())
         _page, per_page, total, items = util.zip_paginate(ret)
         resp = {"data": items, "page": _page, "per_page": per_page, "total": total}
         return resp
