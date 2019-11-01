@@ -47,8 +47,9 @@ def summarise():
     ins = Indicators
     latest_cls = cls.query.with_entities(cls.update_date).order_by(cls.update_date.desc()).limit(1).first()[0]
     latest_ins = ins.query.with_entities(ins.update_date).order_by(ins.update_date.desc()).limit(1).first()[0]
-    latest_rpt = \
-    ins.query.with_entities(ins.rpt_date).order_by(ins.update_date.desc(), ins.rpt_date.desc()).limit(1).first()[0]
+    latest_rpt = ins.query.with_entities(ins.rpt_date).order_by(
+        ins.update_date.desc(), ins.rpt_date.desc()
+    ).limit(1).first()[0]
 
     data = db.session.query(cls.windcode, cls.branch, cls.classify, ins.numeric).filter(cls.update_date == latest_cls,
                                                                                         ins.update_date == latest_ins,
