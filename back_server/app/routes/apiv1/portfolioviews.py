@@ -48,6 +48,7 @@ class PortfolioInfoViews(Resource):
         "基金资产": fields.String,
         "当前净值": fields.String,
         "累计净值": fields.String,
+        "近1周回报": fields.String,
         "近1月回报": fields.String,
         "近3月回报": fields.String,
         "近6月回报": fields.String,
@@ -99,7 +100,7 @@ class PortfolioInfoViews(Resource):
 
         indicators = pd.DataFrame(indicators)
         indicators["numeric"] = indicators["numeric"].astype("float")
-        indicators = indicators.pivot("windcode", "indicator")
+        indicators = indicators.pivot("windcode", "indicator")["numeric"]
         indicators = indicators / 1e8
 
         latest_performance = FundPerformance.query.with_entities(db.func.max(FundPerformance.update_date)).first()[0]
@@ -111,20 +112,21 @@ class PortfolioInfoViews(Resource):
             FundPerformance.update_date == latest_performance
         ).all()
 
-        performance = pd.DataFrame(performance).pivot("windcode", "indicator")
+        performance = pd.DataFrame(performance).pivot("windcode", "indicator")["numeric"]
 
         df = pd.merge(basic_info, indicators, left_index=True, right_index=True, how="inner")
         df = pd.merge(df, performance, left_index=True, right_index=True, how="inner")
         df = df.rename(columns={
-            "sec_name": "基金简称", "fund_setupdate": "成立日期", ('numeric', 'FUND_FUNDSCALE'): "基金规模(亿元)",
-            ('numeric', 'NETASSET_TOTAL'): "基金资产",  ('numeric', 'NAV'): "当前净值", ('numeric', 'NAV_ACC'): "累计净值",
-            ('numeric', 'RETURN_1M'): "近1月回报", ('numeric', 'RETURN_1Y'): "近1年回报",
-            ('numeric', 'RETURN_3M'): "近3月回报", ('numeric', 'RETURN_3Y'): "近3年回报",
-            ('numeric', 'RETURN_6M'): "近6月回报", ('numeric', 'RETURN_STD'): "成立年化回报"
+            "sec_name": "基金简称", "fund_setupdate": "成立日期", 'FUND_FUNDSCALE': "基金规模(亿元)",
+            'NETASSET_TOTAL': "基金资产",  'NAV': "当前净值", 'NAV_ACC': "累计净值",
+            'RETURN_1M': "近1月回报", 'RETURN_1Y': "近1年回报",
+            'RETURN_3M': "近3月回报", 'RETURN_3Y': "近3年回报",
+            'RETURN_6M': "近6月回报", 'RETURN_STD': "成立年化回报",
+            'RETURN_1W': "近1周回报"
         })
         df['成立日期'] = df['成立日期'].apply(lambda x: x.strftime("%Y/%m/%d"))
         df["基金代码"] = df.index
-        for col in ["基金规模(亿元)", "基金资产", "当前净值", "累计净值", "近1月回报", "近3月回报", "近6月回报", "近1年回报", "近3年回报", "成立年化回报"]:
+        for col in ["基金规模(亿元)", "基金资产", "当前净值", "累计净值", "近1月回报", "近3月回报", "近6月回报", "近1年回报", "近3年回报", "成立年化回报", "近1周回报"]:
             df[col] = df[col].apply(lambda x: round(x, 2))
         ret = df.to_dict(orient="record")
         return ret
